@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Users/USUARIO/Documents/prueba/cmake-build-debug",
+  "command": "C:\\PROGRA~1\\JETBRA~1\\CLION2~1.3\\bin\\mingw\\bin\\gcc.exe -g -std=gnu11 -fdiagnostics-color=always -o CMakeFiles\\prueba.dir\\main.c.obj -c C:\\Users\\USUARIO\\Documents\\prueba\\main.c",
+  "file": "C:/Users/USUARIO/Documents/prueba/main.c",
+  "output": "C:/Users/USUARIO/Documents/prueba/cmake-build-debug/CMakeFiles/prueba.dir/main.c.obj"
+}
+]
