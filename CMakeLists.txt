@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.1)
-project(prueba C)
+project(Embedrite C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(prueba
+add_executable(embdc
         main.c)
