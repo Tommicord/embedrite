@@ -1,4 +1,5 @@
 /*
+Embedrite:
 This is a compiler for the language "Embedrite"
 Designed to be low-level, with a simple syntax
 and new features such as compact structs and embedded code.
@@ -15,7 +16,7 @@ Objective:
 
 Hello world in Embedrite:
 
-import 'ember:std';
+import 'embdr:std' std;
 
 func int main:
     std:println("Hello, World!");
@@ -34,7 +35,7 @@ func int main:
 #define EMBEDRITE_OPERATOR 0x00
 #define EMBEDRITE_KEYWORD 0x01
 #define EMBEDRITE_STRING 0x02
-#define EMBEDRITE_MULTILINE_COMMENT 0x03
+#define EMBEDRITE_COMMENT 0x03
 #define EMBEDRITE_IDENTIFIER 0x04
 #define EMBEDRITE_NUMBER 0x05
 #define EMBEDRITE_WHITE_SPACE 0x06
@@ -44,7 +45,10 @@ func int main:
 #define EMBEDRITE_BASE_10 0xA
 #define EMBEDRITE_BASE_16 0xB
 #define EMBEDRITE_BASE_2 0xC
-#define EMBEDRITE_ASSEMBLY_KW 0xD
+#define EMBEDRITE_ASSEMBLY_KW 0xE
+#define EMBEDRITE_MULTILINE 0xF
+#define EMBEDRITE_NDT 0x18 // Not defined token
+typedef unsigned short FLAGS;
 
 const char *embedrite_keywords[] = {
     "func", "compact", "struct",
@@ -70,8 +74,8 @@ const char *embedrite_assembly_keywords[] = {
 };
 const char *embedrite_tokens[] = {
     "+", "-", "/", "$", "*", "%", "&", "|",
-    "^", "!", "<<", ">>", "!&", "^|",
-    "!|", ",", "\'", "\"", "(", ")", ":",
+    "^", "!", "<<", ">>",
+    ",", "\'", "\"", "(", ")", ":",
     ";", "<", ">", ">=", "<="
 };
 const int keywordsLength = 11;
@@ -81,6 +85,7 @@ const int tokensLength = 26;
 struct Token {
     char *value;
     int length;
+    int allocated;
     unsigned short flags;
 };
 
@@ -91,8 +96,8 @@ struct Tokens {
 
 char *Readf(const char *filename) {
     FILE *file = fopen(filename, "r");
-    const int buffSize = 1024 * 1024;
     fseek(file, 0, SEEK_END);
+    const int buffSize = 1024 * 1024;
     const int fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
     char *buff = malloc(buffSize);
@@ -100,12 +105,12 @@ char *Readf(const char *filename) {
         perror("Error allocating memory");
         abort();
     }
-    fread(buff, sizeof(char), fileSize, file);
+    fread(buff, sizeof(char), buffSize, file);
     fclose(file);
     return buff;
 }
 
-char *FlagsBinary(unsigned short flags) {
+char *FlagsBinary(FLAGS flags) {
     const int count = sizeof(flags) * 8;
     char *sptr = malloc(flags + 1);
     for(int i = 0; i < count; ++i)
@@ -125,55 +130,63 @@ void PrintTokens(struct Tokens *tokens) {
         else {
             string = token->value;
         }
-        char *flagss = FlagsBinary(token->flags);
-        printf("%d '%s' %s\n", arrI, string, flagss);
-        free(flagss);
-        flagss = NULL;
+        char *flagsb = FlagsBinary(token->flags);
+        printf("%d '%s' %s\n", arrI, string, flagsb);
+        free(flagsb);
+        flagsb = NULL;
         arrI++;
     }
 }
 
 // Inlining for optimization, since these functions will be called a lot of times
 
-static inline void FlagSet(unsigned short *flags, const uint8_t flag) {
+void FlagSet(unsigned short *flags, const uint8_t flag) {
     *flags |= (1u << flag);
 }
 
-static inline void FlagClear(unsigned short *flags, const uint8_t flag) {
+void FlagClear(unsigned short *flags, const uint8_t flag) {
     *flags &= ~(1u << flag);
 }
 
-static inline unsigned int FlagRead(const unsigned short flags, const uint8_t flag) {
+unsigned int FlagRead(const unsigned short flags, const uint8_t flag) {
     return (flags & (1u << flag));
 }
 
-static inline void FlagToggle(unsigned short *flags, const uint8_t flag) {
+void FlagToggle(unsigned short *flags, const uint8_t flag) {
     *flags ^= (1u << flag);
 }
 
-static inline int IsLetter(const char c) {
+int IsLetter(const char c) {
     return
         (c >= 0x41 && c <= 0x5A) ||
         (c >= 0x61 && c <= 0x7A);
 }
 
-static inline int IsDigit(const char c) {
+int IsDigit(const char c) {
     return c >= 0x30 && c <= 0x39;
 }
 
-static inline int IsHexadecimalDigit(const char c) {
+int IsHexadecimalDigit(const char c) {
     return
         IsDigit(c)               ||
         (c >= 0x41 && c <= 0x46) ||
         (c >= 0x61 && c <= 0x66);
 }
 
-static inline int IsBinaryDigit(const char c) {
+int IsBinaryDigit(const char c) {
     return
         c == 0x30 || c == 0x31;
 }
 
-static inline int IsType(const char *string, int length, const char *arr[]) {
+int IsDelimiter(const char c) {
+    return
+            c == 0x20
+            || c >= 0x27 && c <= 0x2E
+            || c == 0x3A
+            || c == 0x3B;
+}
+
+int DefinedToken(const char *string, int length, const char *arr[]) {
     for(int i = 0; i < length; ++i) {
         if(strcmp(string, arr[i]) == 0) {
             return 1;
@@ -182,18 +195,18 @@ static inline int IsType(const char *string, int length, const char *arr[]) {
     return 0;
 }
 
-static inline void TokenPushChar(struct Token *token, int *tokenCharI, int *charI, const char *content, char *c) {
+void TokenPushChar(struct Token *token, int *tokenCharI, int *charI, const char *content, char *c) {
     token->value[(*tokenCharI)++] = *c;
     *charI += 1;
     *c = content[*charI];
 }
 
-static inline void PushToken(struct Tokens *tokens, struct Token *token) {
+void PushToken(struct Tokens *tokens, struct Token *token) {
     tokens->arr[tokens->length] = token;
     tokens->length++;
 }
 
-static inline void FreeTokens(struct Tokens *tokens) {
+void FreeTokens(struct Tokens *tokens) {
     for(int i = 0; i < tokens->length; ++i) {
         free(tokens->arr[i]->value);
         tokens->arr[i]->value = NULL;
@@ -202,12 +215,12 @@ static inline void FreeTokens(struct Tokens *tokens) {
     free(tokens);
 }
 
-static inline void CheckLineI(const char c, int *lineI) {
+void CheckLineI(const char c, int *lineI) {
     if(c == '\n')
         (*lineI)++;
 }
 
-static inline void TokenManageBase(
+void TokenManageBase(
     struct Tokens *tokens,
     struct Token *token,
     const char *content,
@@ -215,8 +228,8 @@ static inline void TokenManageBase(
     int *charI,
     int *tokenCharI,
     int jumpBits,
-    int (*baseChecker)(char),
-    unsigned short flags,
+    int (*checker)(char),
+    FLAGS flags,
     uint8_t flag
     ) {
     FlagSet(&flags, flag);
@@ -224,7 +237,7 @@ static inline void TokenManageBase(
     token->flags = flags;
     *charI += jumpBits, *tokenCharI += jumpBits;
     *c = content[*charI];
-    while (baseChecker(*c)) {
+    while (checker(*c)) {
         TokenPushChar(token, tokenCharI, charI, content, c);
     }
     token->value[*tokenCharI] = '\0';
@@ -232,7 +245,226 @@ static inline void TokenManageBase(
     PushToken(tokens, token);
 }
 
-struct Tokens *EmberdriteGetTokens(const char *content) {
+struct Token *TokenDirect(const char *value, FLAGS flags) {
+    int length = strlen(value);
+    struct Token *token = malloc(sizeof(struct Token));
+    token->value = malloc(length + 1);
+    strcpy(token->value, value);
+    token->flags = flags;
+    token->length = length;
+    return token;
+}
+
+void EmbedriteReadComment(
+    int *charI,
+    int *lineI,
+    const char *content,
+    FLAGS flags
+    ) {
+    (*charI)++;
+    if(content[*charI] == '/') {
+        while(content[*charI] != '\n' && content[*charI] != '\0') {
+            charI++;
+        }
+        CheckLineI(content[*charI], lineI);
+    }
+    else if(content[*charI] == '$') {
+        FlagSet(&flags, EMBEDRITE_COMMENT);
+
+        while(FlagRead(flags, EMBEDRITE_COMMENT)) {
+            (*charI)++;
+            CheckLineI(content[*charI], lineI);
+            if(content[*charI] == '$' && content[*charI + 1] == '/') {
+                FlagClear(&flags, EMBEDRITE_COMMENT);
+                *charI += 2;
+            }
+        }
+    }
+}
+
+void EmbedriteReadWord(
+    char *c,
+    int *charI,
+    int *tokenCharI,
+    const char *content,
+    struct Tokens *dist,
+    FLAGS flags
+    ) {
+    struct Token *token = malloc(sizeof(struct Token));
+    token->value = malloc(32);
+    *tokenCharI = 0;
+    while(IsLetter(*c)) {
+        TokenPushChar(token, tokenCharI, charI, content, c);
+    }
+    token->value[*tokenCharI] = '\0';
+    token->length = *tokenCharI;
+    char *tokenCopy = malloc(token->length);
+    strncpy(tokenCopy, token->value, token->length);
+    for (int i = 0; i < token->length; ++i) {
+        tokenCopy[i] = (char)tolower(token->value[i]);
+    }
+    if (DefinedToken(tokenCopy, assemblyKeywordsLength, embedrite_assembly_keywords)) {
+        FlagSet(&flags, EMBEDRITE_KEYWORD);
+        FlagSet(&flags, EMBEDRITE_ASSEMBLY_KW);
+        token->flags = flags;
+    }
+    else if (DefinedToken(tokenCopy, keywordsLength, embedrite_keywords)) {
+        FlagSet(&flags, EMBEDRITE_KEYWORD);
+        token->flags = flags;
+    }
+    free(tokenCopy);
+    tokenCopy = NULL;
+    PushToken(dist, token);
+}
+
+void EmbedriteReadSpace(
+    char *c,
+    int *charI,
+    int *tokenCharI,
+    const char *content,
+    struct Tokens *dist,
+    FLAGS flags
+    ) {
+    struct Token *token = malloc(sizeof(struct Token));
+    token->value = malloc(64);
+    FlagSet(&flags, EMBEDRITE_WHITE_SPACE);
+    token->flags = flags;
+    *tokenCharI = 0;
+    while (content[*charI] == ' ') {
+        TokenPushChar(token, tokenCharI, charI, content, c);
+    }
+    token->value[*tokenCharI] = '\0';
+    PushToken(dist, token);
+}
+
+void EmbedriteReadString(
+    char *c,
+    int *charI,
+    int *tokenCharI,
+    const char *content,
+    struct Tokens *dist,
+    FLAGS flags) {
+    (*charI)++;
+    *c = content[*charI];
+    PushToken(dist, TokenDirect(c, EMBEDRITE_TOKEN));
+    FlagSet(&flags, EMBEDRITE_STRING);
+    struct Token *token = malloc(sizeof(struct Token));
+    token->allocated = 128;
+    token->value = malloc(token->allocated);
+    token->length = 1; // Just the first "
+    token->flags = flags;
+    tokenCharI = 0;
+    while(content[*charI] != '"' && content[*charI] != '\0') {
+        if (token->length + 1 >= token->allocated) {
+            token->allocated = token->length + 128;
+            char *chunk = realloc(token->value, token->allocated);
+            if(chunk == NULL) {
+                free(token->value);
+            }
+            else {
+                token->value = chunk;
+            }
+        }
+        TokenPushChar(token, tokenCharI, charI, content, c);
+        token->length++;
+    }
+    (*charI)++;
+    token->value[*tokenCharI] = '\0';
+    PushToken(dist, token);
+}
+
+void EmbedriteReadLineb(
+    int *charI,
+    int *lineI,
+    struct Tokens *dist,
+    FLAGS flags) {
+    (*charI)++, (*lineI)++;
+    const char *lineBreak = "\n\0";
+    FlagSet(&flags, EMBEDRITE_LINE_BREAK);
+    struct Token *token = malloc(sizeof(struct Token));
+    token->value = malloc(2);
+    token->length = 1;
+    strcpy(token->value, lineBreak);
+    token->flags = flags;
+    PushToken(dist, token);
+}
+
+void EmbedriteReadNumber(
+    char *c,
+    int *charI,
+    int *tokenCharI,
+    const char *content,
+    struct Tokens *dist,
+    FLAGS flags
+    ) {
+    const int jumpChars = 2;
+    FlagSet(&flags, EMBEDRITE_NUMBER);
+    struct Token *token = malloc(sizeof(struct Token));
+    token->value = malloc(64);
+    token->value[0] = *c;
+    *tokenCharI = 0;
+    if (content[*charI + 1] == 'x') { // Case hexadecimal
+        TokenManageBase(
+            dist,
+            token,
+            content,
+            c,
+            charI,
+            tokenCharI,
+            jumpChars,
+            IsHexadecimalDigit,
+            flags,
+            EMBEDRITE_BASE_16
+            );
+    }
+    else if (content[*charI + 1] == 'b') {
+        TokenManageBase(
+            dist,
+            token,
+            content,
+            c,
+            charI,
+            tokenCharI,
+            jumpChars,
+            IsBinaryDigit,
+            flags,
+            EMBEDRITE_BASE_2
+            );
+    }
+    else {
+        while (IsDigit(*c)) {
+            TokenPushChar(token, tokenCharI, charI, content, c);
+        }
+        token->value[*tokenCharI] = '\0';
+        PushToken(dist, token);
+    }
+}
+
+void EmbedriteReadDelmt(
+    char *c,
+    int *charI,
+    struct Tokens *dist,
+    FLAGS flags
+    ) {
+    char *delmt = malloc(2); // The delimiter is only 2 bytes
+    delmt[0] = *c;
+    delmt[1] = '\0';
+    FlagSet(&flags, EMBEDRITE_DELIMITER);
+    PushToken(dist, TokenDirect(delmt, flags));
+    (*charI)++;
+}
+
+void EmbedriteReadNDT(
+    char *c,
+    int *charI,
+    struct Tokens *dist,
+    FLAGS flags) {
+    FlagSet(&flags, EMBEDRITE_NDT);
+    PushToken(dist, TokenDirect(c, flags));
+    (*charI)++;
+}
+
+struct Tokens *EmbedriteGetTokens(const char *content) {
     struct Tokens *tokens = malloc(sizeof(struct Tokens));
     if (tokens == NULL) {
         goto tokens_alloc_error;
@@ -245,126 +477,77 @@ struct Tokens *EmberdriteGetTokens(const char *content) {
     int charI = 0; // Char index
     int tokenCharI = 0;
     int lineI = 0;
-    unsigned short flags = 0b000000000000;
+    FLAGS flags = 0b000000000000;
     while(content[charI] != '\0') {
         flags = 0;
 
         char c = content[charI];
 
         if (c == '/') { // Comment
-            charI++;
-            if(content[charI] == '/') {
-                while(content[charI] != '\n' && content[charI] != '\0') {
-                    charI++;
-                }
-                CheckLineI(content[charI], &lineI);
-            }
-            else if(content[charI] == '$') {
-                FlagSet(&flags, EMBEDRITE_MULTILINE_COMMENT);
-
-                while(FlagRead(flags, EMBEDRITE_MULTILINE_COMMENT)) {
-                    charI++;
-                    CheckLineI(content[charI], &lineI);
-                    if(content[charI] == '$' && content[charI + 1] == '/') {
-                        FlagClear(&flags, EMBEDRITE_MULTILINE_COMMENT);
-                        charI += 2;
-                    }
-                }
-            }
+            EmbedriteReadComment(
+                &charI,
+                &lineI,
+                content,
+                flags
+                );
         }
         else if(IsLetter(c)) {
-            struct Token *token = malloc(sizeof(struct Token));
-            token->value = malloc(32);
-            tokenCharI = 0;
-            while(IsLetter(c)) {
-                TokenPushChar(token, &tokenCharI, &charI, content, &c);
-            }
-            token->value[tokenCharI] = '\0';
-            token->length = tokenCharI;
-            char *tokenCopy = malloc(token->length);
-            strncpy(tokenCopy, token->value, token->length);
-            for (int i = 0; i < token->length; ++i) {
-                tokenCopy[i] = (char)tolower(token->value[i]);
-            }
-            if (IsType(tokenCopy, assemblyKeywordsLength, embedrite_assembly_keywords)) {
-                FlagSet(&flags, EMBEDRITE_KEYWORD);
-                FlagSet(&flags, EMBEDRITE_ASSEMBLY_KW);
-                token->flags = flags;
-            }
-            else if (IsType(tokenCopy, keywordsLength, embedrite_keywords)) {
-                FlagSet(&flags, EMBEDRITE_KEYWORD);
-                token->flags = flags;
-            }
-            PushToken(tokens, token);
+            EmbedriteReadWord(
+                &c,
+                &charI,
+                &tokenCharI,
+                content,
+                tokens,
+                flags);
         }
         else if(c == ' ') {
-            struct Token *token = malloc(sizeof(struct Token));
-            token->value = malloc(64);
-            FlagSet(&flags, EMBEDRITE_WHITE_SPACE);
-            token->flags = flags;
-            tokenCharI = 0;
-            while (content[charI] == ' ') {
-                TokenPushChar(token, &tokenCharI, &charI, content, &c);
-            }
-            token->value[tokenCharI] = '\0';
-            PushToken(tokens, token);
+            EmbedriteReadSpace(
+                &c,
+                &charI,
+                &tokenCharI,
+                content,
+                tokens,
+                flags);
+        }
+        else if(c == '"') {
+            EmbedriteReadString(
+                &c,
+                &charI,
+                &tokenCharI,
+                content,
+                tokens,
+                flags
+                );
         }
         else if(c == '\n') {
-            charI++, lineI++;
-            char *lineBreak = "\n\0";
-            FlagSet(&flags, EMBEDRITE_LINE_BREAK);
-            struct Token *token = malloc(sizeof(struct Token));
-            token->value = malloc(2);
-            token->length = 1;
-            strcpy(token->value, lineBreak);
-            token->flags = flags;
-            PushToken(tokens, token);
+            EmbedriteReadLineb(
+                &charI,
+                &lineI,
+                tokens,
+                flags);
+        }
+        else if (IsDelimiter(c)) {
+            EmbedriteReadDelmt(
+                &c,
+                &charI,
+                tokens,
+                flags);
         }
         else if (IsDigit(c)) {
-            const int jumpBits = 2;
-            FlagSet(&flags, EMBEDRITE_NUMBER);
-            struct Token *token = malloc(sizeof(struct Token));
-            token->value = malloc(64);
-            token->value[0] = c;
-            tokenCharI = 0;
-            if (content[charI + 1] == 'x') { // Case hexadecimal
-                TokenManageBase(
-                    tokens,
-                    token,
-                    content,
-                    &c,
-                    &charI,
-                    &tokenCharI,
-                    jumpBits,
-                    IsHexadecimalDigit,
-                    flags,
-                    EMBEDRITE_BASE_16
-                    );
-            }
-            else if (content[charI + 1] == 'b') {
-                TokenManageBase(
-                    tokens,
-                    token,
-                    content,
-                    &c,
-                    &charI,
-                    &tokenCharI,
-                    jumpBits,
-                    IsBinaryDigit,
-                    flags,
-                    EMBEDRITE_BASE_2
-                    );
-            }
-            else {
-                while (IsDigit(c)) {
-                    TokenPushChar(token, &tokenCharI, &charI, content, &c);
-                }
-                token->value[tokenCharI] = '\0';
-                PushToken(tokens, token);
-            }
+            EmbedriteReadNumber(
+                &c,
+                &charI,
+                &tokenCharI,
+                content,
+                tokens,
+                flags);
         }
         else {
-            charI++;
+            EmbedriteReadNDT(
+                &c,
+                &charI,
+                tokens,
+                flags);
         }
     }
 
@@ -382,7 +565,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     char *content = Readf(argv[1]);
-    struct Tokens *mytokens = EmberdriteGetTokens(content);
+    struct Tokens *mytokens = EmbedriteGetTokens(content);
     PrintTokens(mytokens);
     FreeTokens(mytokens);
     free(content);
