@@ -264,7 +264,7 @@ void EmbedriteReadComment(
     (*charI)++;
     if(content[*charI] == '/') {
         while(content[*charI] != '\n' && content[*charI] != '\0') {
-            charI++;
+            (*charI)++;
         }
         CheckLineI(content[*charI], lineI);
     }
