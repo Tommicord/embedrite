@@ -6,6 +6,18 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define EMBDC_MANAGE_CHUNK_ALLOC(token) \
+    if (token->length + 1 >= token->allocated) { \
+        token->allocated = token->length + 128; \
+        char *chunk = realloc(token->value, token->allocated); \
+        if(chunk == NULL) { \
+            free(token->value); \
+            perror("Failed allocating memory from token"); \
+            abort(); \
+        } \
+    token->value = chunk; \
+    }
+
 static void FlagSet(FLAGS *flags, const uint8_t flag) {
     *flags |= (1u << flag);
 }
@@ -95,6 +107,7 @@ static void TokenManageBase(
     *charI += jumpBits, *tokenCharI += jumpBits;
     *c = content[*charI];
     while (checker(*c)) {
+        EMBDC_MANAGE_CHUNK_ALLOC(token);
         TokenPushChar(token, tokenCharI, charI, content, c);
     }
     token->value[*tokenCharI] = '\0';
@@ -148,9 +161,11 @@ static void EmbdcReadWord(
     FLAGS flags
     ) {
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
-    token->value = malloc(32);
+    token->allocated = 32;
+    token->value = malloc(token->allocated);
     *tokenCharI = 0;
     while(IsLetter(*c)) {
+        EMBDC_MANAGE_CHUNK_ALLOC(token);
         TokenPushChar(token, tokenCharI, charI, content, c);
     }
     token->value[*tokenCharI] = '\0';
@@ -183,13 +198,16 @@ static void EmbdcReadSpace(
     FLAGS flags
     ) {
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
-    token->value = malloc(64);
+    token->allocated = 64;
+    token->value = malloc(token->allocated);
     FlagSet(&flags, EMBEDRITE_WHITE_SPACE);
     token->flags = flags;
     *tokenCharI = 0;
     while (content[*charI] == ' ') {
+        EMBDC_MANAGE_CHUNK_ALLOC(token);
         TokenPushChar(token, tokenCharI, charI, content, c);
     }
+    token->length = *tokenCharI;
     token->value[*tokenCharI] = '\0';
     PushToken(dist, token);
 }
@@ -212,19 +230,10 @@ static void EmbdcReadString(
     token->flags = flags;
     *tokenCharI = 0;
     while(content[*charI] != '"' && content[*charI] != '\0') {
-        if (token->length + 1 >= token->allocated) {
-            token->allocated = token->length + 128;
-            char *chunk = realloc(token->value, token->allocated);
-            if(chunk == NULL) {
-                free(token->value);
-                perror("Failed allocating memory from token");
-                abort();
-            }
-            token->value = chunk;
-        }
+        EMBDC_MANAGE_CHUNK_ALLOC(token);
         TokenPushChar(token, tokenCharI, charI, content, c);
-        token->length++;
     }
+    token->length = *tokenCharI;
     (*charI)++;
     token->value[*tokenCharI] = '\0';
     PushToken(dist, token);
@@ -323,13 +332,7 @@ static void EmbdcReadNDT(
 
 TOKENS EmbdcGetTokens(const char *content) {
     struct EmbdcTokens *tokens = malloc(sizeof(struct EmbdcTokens));
-    if (tokens == NULL) {
-        goto tokens_alloc_error;
-    }
     tokens->arr = malloc(TOKENS_SIZE * sizeof(struct EmbdcToken *));
-    if (tokens->arr == NULL) {
-        goto tokens_alloc_error;
-    }
     tokens->length = 0;
     int charI = 0; // Char index
     int tokenCharI = 0;
@@ -409,10 +412,6 @@ TOKENS EmbdcGetTokens(const char *content) {
     }
 
     return tokens;
-
-    tokens_alloc_error:
-        perror("Error allocation memory for tokens");
-        abort();
 }
 
 void EmbdcFreeTokens(TOKENS tokens) {

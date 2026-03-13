@@ -37,7 +37,10 @@ char *Readf(const char *filename) {
         perror("Error allocating memory");
         abort();
     }
-    fread(buff, sizeof(char), buffSize, file);
+    fseek(file, 0, SEEK_END);
+    const int length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    fread(buff, sizeof(char), length, file);
     fclose(file);
     return buff;
 }
