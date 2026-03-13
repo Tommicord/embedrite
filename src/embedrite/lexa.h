@@ -1,0 +1,75 @@
+#ifndef EMBEDRITE_LEXA_H_
+#define EMBEDRITE_LEXA_H_
+
+#define TOKENS_SIZE 1024
+#define TOKEN_SIZE 256
+
+#define EMBEDRITE_OPERATOR 0x00
+#define EMBEDRITE_KEYWORD 0x01
+#define EMBEDRITE_STRING 0x02
+#define EMBEDRITE_COMMENT 0x03
+#define EMBEDRITE_IDENTIFIER 0x04
+#define EMBEDRITE_NUMBER 0x05
+#define EMBEDRITE_WHITE_SPACE 0x06
+#define EMBEDRITE_LINE_BREAK 0x07
+#define EMBEDRITE_TOKEN 0x08
+#define EMBEDRITE_DELIMITER 0x09
+#define EMBEDRITE_BASE_10 0xA
+#define EMBEDRITE_BASE_16 0xB
+#define EMBEDRITE_BASE_2 0xC
+#define EMBEDRITE_ASSEMBLY_KW 0xE
+#define EMBEDRITE_MULTILINE 0xF
+#define EMBEDRITE_NDT 0x18 // Not defined token
+
+typedef unsigned short FLAGS;
+typedef struct EmbdcTokens *TOKENS;
+
+struct EmbdcToken {
+    char *value;
+    int length;
+    int allocated;
+    unsigned short flags;
+};
+
+struct EmbdcTokens {
+    int length;
+    struct EmbdcToken **arr;
+};
+
+static const char *embedrite_keywords[] = {
+    "func", "compact", "struct",
+    "int", "bit", "char", "byte",
+    "embed", "and", "not", "or",
+};
+static const char *embedrite_assembly_keywords[] = {
+    "mov", "push", "pop", "lea",
+    "add", "sub", "inc", "dec",
+    "imul", "idiv", "adc", "and", "not", "andl", "notl", "orl",
+    "neg", "shl", "shr", "jmp",
+    "je", "jne", "jz", "jg",
+    "jge", "jl", "jle", "cmp",
+    "js", "jnz", "jns", "js", "jnc",
+    "enter", "leave", "loop", "loope",
+    "loopne", "loopnz", "loopz",
+    "call", "ret", "movzx",
+    "test", "nop", "movsb",
+    "movsw", "movw", "movl",
+    "movw", "movb", "movsbw",
+    "movsbl", "movsbw", "pusha",
+    "popa", "xchg", "xlat"
+};
+static const char *embedrite_tokens[] = {
+    "+", "-", "/", "$", "*", "%", "&", "|",
+    "^", "!", "<<", ">>",
+    ",", "\'", "\"", "(", ")", ":",
+    ";", "<", ">", ">=", "<="
+};
+
+static const int keywordsLength = 11;
+static const int assemblyKeywordsLength = 57;
+static const int tokensLength = 26;
+
+static TOKENS EmbdcGetTokens(const char *content);
+static void EmbdcFreeTokens(TOKENS tokens);
+
+#endif
