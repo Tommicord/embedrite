@@ -69,6 +69,32 @@ static const int keywordsLength = 11;
 static const int assemblyKeywordsLength = 57;
 static const int tokensLength = 26;
 
+#ifdef EMBDC_DEBUG
+#define EMBDC_FLAGS_BINARY(flags) \
+    const int count = sizeof(flags) * 8; \
+    char *sptr = malloc(flags + 1); \
+    for(int i = 0; i < count; ++i) \
+        sptr[i] = (char) ( 0x30 | ((flags >> (count - 1 - i)) & 1) ); \
+    sptr[count] = '\0'; \
+    printf("%s", sptr); \
+    free(sptr);
+
+#define EMBDC_TOKENS_PRINT(tokens) \
+    int arrI = 0; \
+    while(arrI < tokens->length) { \
+        char *string; \
+        struct EmbdcToken *token = tokens->arr[arrI]; \
+        if (strcmp(token->value, "\n") == 0) { \
+            string = "\\n\0"; \
+        } \
+        else { \
+            string = token->value; \
+        } \
+        printf("%d '%s'\n", arrI, string); \
+        arrI++; \
+    }
+#endif
+
 static TOKENS EmbdcGetTokens(const char *content);
 static void EmbdcFreeTokens(TOKENS tokens);
 

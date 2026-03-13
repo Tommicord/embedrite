@@ -25,8 +25,8 @@ func int main:
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
+#define EMBDC_DEBUG
 #include "src/embedrite/lexa.c"
 
 char *Readf(const char *filename) {
@@ -42,34 +42,6 @@ char *Readf(const char *filename) {
     return buff;
 }
 
-char *FlagsBinary(FLAGS flags) {
-    const int count = sizeof(flags) * 8;
-    char *sptr = malloc(flags + 1);
-    for(int i = 0; i < count; ++i)
-        sptr[i] = (char) ( 0x30 | ((flags >> (count - 1 - i)) & 1) );
-    sptr[count] = '\0';
-    return sptr;
-}
-
-void PrintTokens(TOKENS tokens) {
-    int arrI = 0;
-    while(arrI < tokens->length) {
-        char *string;
-        struct EmbdcToken *token = tokens->arr[arrI];
-        if (strcmp(token->value, "\n") == 0) {
-            string = "\\n\0";
-        }
-        else {
-            string = token->value;
-        }
-        char *flagsb = FlagsBinary(token->flags);
-        printf("%d '%s' %s\n", arrI, string, flagsb);
-        free(flagsb);
-        flagsb = NULL;
-        arrI++;
-    }
-}
-
 int main(int argc, char *argv[]) {
     if(argc == 1) {
         perror("No input file provided");
@@ -78,7 +50,7 @@ int main(int argc, char *argv[]) {
 
     char *content = Readf(argv[1]);
     struct EmbdcTokens *mytokens = EmbdcGetTokens(content);
-    PrintTokens(mytokens);
+    EMBDC_TOKENS_PRINT(mytokens);
     EmbdcFreeTokens(mytokens);
     free(content);
     return EXIT_SUCCESS;
