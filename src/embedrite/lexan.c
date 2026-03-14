@@ -87,7 +87,7 @@ static void PushToken(TOKENS tokens, struct EmbdcToken *token) {
         tokens->allocated = tokens->length + 1024;
         void *chunk = realloc(tokens->arr, tokens->allocated);
         if (chunk == NULL) {
-            free(tokens);
+            free(tokens->arr);
             perror("Failed allocation for tokens");
             abort();
         }
