@@ -97,7 +97,7 @@ static const int tokensLength = 26;
     }
 #endif
 
-TOKENS EmbdcGetTokens(const char *content);
+TOKENS EmbdcTokenize(const char *content);
 void EmbdcFreeTokens(TOKENS tokens);
 
 #endif

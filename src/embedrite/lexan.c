@@ -69,8 +69,8 @@ static int DefinedToken(const char *string, int length, const char *arr[]) {
     return 0;
 }
 
-static void TokenPushChar(struct EmbdcToken *token, int *tokenCharPos, int *pos, const char *content, char *c) {
-    token->value[(*tokenCharPos)++] = *c;
+static void TokenPushChar(struct EmbdcToken *token, int *pos, const char *content, char *c) {
+    token->value[token->length++] = *c;
     *pos += 1;
     *c = content[*pos];
 }
@@ -91,7 +91,6 @@ static void TokenManageBase(
     const char *content,
     char *c,
     int *pos,
-    int *tokenCharPos,
     int jumpBits,
     int (*checker)(char),
     FLAGS flags,
@@ -100,14 +99,13 @@ static void TokenManageBase(
     FlagSet(&flags, flag);
     token->value[1] = content[*pos + 1];
     token->flags = flags;
-    *pos += jumpBits, *tokenCharPos += jumpBits;
+    *pos += jumpBits, token->length += jumpBits;
     *c = content[*pos];
     while (checker(*c)) {
-        EMBDC_MANAGE_CHUNK_ALLOC(*tokenCharPos);
-        TokenPushChar(token, tokenCharPos, pos, content, c);
+        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        TokenPushChar(token, pos, content, c);
     }
-    token->value[*tokenCharPos] = '\0';
-    token->length = *tokenCharPos;
+    token->value[token->length] = '\0';
     PushToken(tokens, token);
 }
 
@@ -151,7 +149,6 @@ static void EmbdcReadComment(
 static void EmbdcReadWord(
     char *c,
     int *pos,
-    int *tokenCharPos,
     const char *content,
     TOKENS dist,
     FLAGS flags
@@ -159,13 +156,12 @@ static void EmbdcReadWord(
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
     token->allocated = 32;
     token->value = malloc(token->allocated);
-    *tokenCharPos = 0;
+    token->length = 0;
     while(IsLetter(*c)) {
-        EMBDC_MANAGE_CHUNK_ALLOC(*tokenCharPos);
-        TokenPushChar(token, tokenCharPos, pos, content, c);
+        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        TokenPushChar(token, pos, content, c);
     }
-    token->value[*tokenCharPos] = '\0';
-    token->length = *tokenCharPos;
+    token->value[token->length] = '\0';
     char *tokenCopy = malloc(token->length);
     strncpy(tokenCopy, token->value, token->length);
     for (int i = 0; i < token->length; ++i) {
@@ -188,7 +184,6 @@ static void EmbdcReadWord(
 static void EmbdcReadSpace(
     char *c,
     int *pos,
-    int *tokenCharPos,
     const char *content,
     TOKENS dist,
     FLAGS flags
@@ -196,22 +191,20 @@ static void EmbdcReadSpace(
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
     token->allocated = 64;
     token->value = malloc(token->allocated);
+    token->length = 0;
     FlagSet(&flags, EMBEDRITE_WHITE_SPACE);
     token->flags = flags;
-    *tokenCharPos = 0;
     while (content[*pos] == ' ') {
-        EMBDC_MANAGE_CHUNK_ALLOC(*tokenCharPos);
-        TokenPushChar(token, tokenCharPos, pos, content, c);
+        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        TokenPushChar(token, pos, content, c);
     }
-    token->length = *tokenCharPos;
-    token->value[*tokenCharPos] = '\0';
+    token->value[token->length] = '\0';
     PushToken(dist, token);
 }
 
 static void EmbdcReadString(
     char *c,
     int *pos,
-    int *tokenCharPos,
     const char *content,
     TOKENS dist,
     FLAGS flags) {
@@ -224,27 +217,26 @@ static void EmbdcReadString(
     token->value = malloc(token->allocated);
     token->length = 1; // Just the first "
     token->flags = flags;
-    *tokenCharPos = 0;
     while(content[*pos] != '"' && content[*pos] != '\0') {
-        EMBDC_MANAGE_CHUNK_ALLOC(*tokenCharPos);
-        TokenPushChar(token, tokenCharPos, pos, content, c);
+        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        TokenPushChar(token, pos, content, c);
     }
-    token->length = *tokenCharPos;
     (*pos)++;
-    token->value[*tokenCharPos] = '\0';
+    token->value[token->length] = '\0';
     PushToken(dist, token);
 }
 
 static void EmbdcReadLineBreak(
-    int *charI,
-    int *lineI,
+    int *pos,
+    int *line,
     TOKENS dist,
     FLAGS flags) {
-    (*charI)++, (*lineI)++;
+    (*pos)++, (*line)++;
     const char *lineBreak = "\n\0";
     FlagSet(&flags, EMBEDRITE_LINE_BREAK);
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
-    token->value = malloc(2);
+    token->allocated = 2;
+    token->value = malloc(token->allocated);
     token->length = 1;
     strcpy(token->value, lineBreak);
     token->flags = flags;
@@ -254,7 +246,6 @@ static void EmbdcReadLineBreak(
 static void EmbdcReadNumber(
     char *c,
     int *pos,
-    int *tokenCharPos,
     const char *content,
     TOKENS dist,
     FLAGS flags
@@ -264,7 +255,7 @@ static void EmbdcReadNumber(
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
     token->value = malloc(64);
     token->value[0] = *c;
-    *tokenCharPos = 0;
+    token->length = 0;
     if (content[*pos + 1] == 'x') { // Case hexadecimal
         TokenManageBase(
             dist,
@@ -272,7 +263,6 @@ static void EmbdcReadNumber(
             content,
             c,
             pos,
-            tokenCharPos,
             jumpChars,
             IsHexadecimalDigit,
             flags,
@@ -286,7 +276,6 @@ static void EmbdcReadNumber(
             content,
             c,
             pos,
-            tokenCharPos,
             jumpChars,
             IsBinaryDigit,
             flags,
@@ -295,9 +284,9 @@ static void EmbdcReadNumber(
     }
     else {
         while (IsDigit(*c)) {
-            TokenPushChar(token, tokenCharPos, pos, content, c);
+            TokenPushChar(token, pos, content, c);
         }
-        token->value[*tokenCharPos] = '\0';
+        token->value[token->length] = '\0';
         PushToken(dist, token);
     }
 }
@@ -326,12 +315,11 @@ static void EmbdcReadNDT(
     (*pos)++;
 }
 
-TOKENS EmbdcGetTokens(const char *content) {
+TOKENS EmbdcTokenize(const char *content) {
     struct EmbdcTokens *tokens = malloc(sizeof(struct EmbdcTokens));
     tokens->arr = malloc(TOKENS_SIZE * sizeof(struct EmbdcToken *));
     tokens->length = 0;
     int pos = 0; // Char index
-    int tokenCharPos = 0;
     int line = 0;
     FLAGS flags = 0b000000000000;
     while(content[pos] != '\0') {
@@ -351,7 +339,6 @@ TOKENS EmbdcGetTokens(const char *content) {
             EmbdcReadWord(
                 &c,
                 &pos,
-                &tokenCharPos,
                 content,
                 tokens,
                 flags);
@@ -360,7 +347,6 @@ TOKENS EmbdcGetTokens(const char *content) {
             EmbdcReadSpace(
                 &c,
                 &pos,
-                &tokenCharPos,
                 content,
                 tokens,
                 flags);
@@ -369,7 +355,6 @@ TOKENS EmbdcGetTokens(const char *content) {
             EmbdcReadString(
                 &c,
                 &pos,
-                &tokenCharPos,
                 content,
                 tokens,
                 flags
@@ -393,7 +378,6 @@ TOKENS EmbdcGetTokens(const char *content) {
             EmbdcReadNumber(
                 &c,
                 &pos,
-                &tokenCharPos,
                 content,
                 tokens,
                 flags);

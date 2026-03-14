@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     }
 
     char *content = Readf(argv[1]);
-    struct EmbdcTokens *mytokens = EmbdcGetTokens(content);
+    struct EmbdcTokens *mytokens = EmbdcTokenize(content);
     EMBDC_TOKENS_PRINT(mytokens);
     EmbdcFreeTokens(mytokens);
     free(content);
