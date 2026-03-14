@@ -330,19 +330,19 @@ TOKENS EmbdcGetTokens(const char *content) {
     struct EmbdcTokens *tokens = malloc(sizeof(struct EmbdcTokens));
     tokens->arr = malloc(TOKENS_SIZE * sizeof(struct EmbdcToken *));
     tokens->length = 0;
-    int charI = 0; // Char index
-    int tokenCharI = 0;
-    int lineI = 0;
+    int pos = 0; // Char index
+    int tokenCharPos = 0;
+    int line = 0;
     FLAGS flags = 0b000000000000;
-    while(content[charI] != '\0') {
+    while(content[pos] != '\0') {
         flags = 0;
 
-        char c = content[charI];
+        char c = content[pos];
 
         if (c == '/') { // Comment
             EmbdcReadComment(
-                &charI,
-                &lineI,
+                &pos,
+                &line,
                 content,
                 flags
                 );
@@ -350,8 +350,8 @@ TOKENS EmbdcGetTokens(const char *content) {
         else if(IsLetter(c)) {
             EmbdcReadWord(
                 &c,
-                &charI,
-                &tokenCharI,
+                &pos,
+                &tokenCharPos,
                 content,
                 tokens,
                 flags);
@@ -359,8 +359,8 @@ TOKENS EmbdcGetTokens(const char *content) {
         else if(c == ' ') {
             EmbdcReadSpace(
                 &c,
-                &charI,
-                &tokenCharI,
+                &pos,
+                &tokenCharPos,
                 content,
                 tokens,
                 flags);
@@ -368,8 +368,8 @@ TOKENS EmbdcGetTokens(const char *content) {
         else if(c == '"') {
             EmbdcReadString(
                 &c,
-                &charI,
-                &tokenCharI,
+                &pos,
+                &tokenCharPos,
                 content,
                 tokens,
                 flags
@@ -377,23 +377,23 @@ TOKENS EmbdcGetTokens(const char *content) {
         }
         else if(c == '\n') {
             EmbdcReadLineBreak(
-                &charI,
-                &lineI,
+                &pos,
+                &line,
                 tokens,
                 flags);
         }
         else if (IsDelimiter(c)) {
             EmbdcReadDelmt(
                 &c,
-                &charI,
+                &pos,
                 tokens,
                 flags);
         }
         else if (IsDigit(c)) {
             EmbdcReadNumber(
                 &c,
-                &charI,
-                &tokenCharI,
+                &pos,
+                &tokenCharPos,
                 content,
                 tokens,
                 flags);
@@ -401,7 +401,7 @@ TOKENS EmbdcGetTokens(const char *content) {
         else {
             EmbdcReadNDT(
                 &c,
-                &charI,
+                &pos,
                 tokens,
                 flags);
         }
