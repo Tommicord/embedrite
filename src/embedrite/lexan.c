@@ -69,6 +69,11 @@ static int DefinedToken(const char *string, int length, const char *arr[]) {
     return 0;
 }
 
+static void CheckLineI(const char c, int *line) {
+    if(c == '\n')
+        (*line)++;
+}
+
 static void TokenPushChar(struct EmbdcToken *token, int *pos, const char *content, char *c) {
     token->value[token->length++] = *c;
     *pos += 1;
@@ -80,9 +85,21 @@ static void PushToken(TOKENS tokens, struct EmbdcToken *token) {
     tokens->length++;
 }
 
-static void CheckLineI(const char c, int *line) {
-    if(c == '\n')
-        (*line)++;
+static struct EmbdcToken *TokenDirect(const char *value, FLAGS flags) {
+    int length = strlen(value);
+    struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
+    token->value = malloc(length + 1);
+    strcpy(token->value, value);
+    token->flags = flags;
+    token->length = length;
+    return token;
+}
+
+static void PushTokenDirect(TOKENS dist, char *c, const char *content, int *pos) {
+    *c = content[*pos];
+    PushToken(dist, TokenDirect(c, EMBEDRITE_TOKEN));
+    (*pos)++;
+    *c = content[*pos];
 }
 
 static void TokenManageBase(
@@ -107,16 +124,6 @@ static void TokenManageBase(
     }
     token->value[token->length] = '\0';
     PushToken(tokens, token);
-}
-
-static struct EmbdcToken *TokenDirect(const char *value, FLAGS flags) {
-    int length = strlen(value);
-    struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
-    token->value = malloc(length + 1);
-    strcpy(token->value, value);
-    token->flags = flags;
-    token->length = length;
-    return token;
 }
 
 static void EmbdcReadComment(
@@ -208,22 +215,20 @@ static void EmbdcReadString(
     const char *content,
     TOKENS dist,
     FLAGS flags) {
-    (*pos)++;
-    *c = content[*pos];
-    PushToken(dist, TokenDirect(c, EMBEDRITE_TOKEN));
+    PushTokenDirect(dist, c, content, pos);
     FlagSet(&flags, EMBEDRITE_STRING);
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
     token->allocated = 128;
     token->value = malloc(token->allocated);
-    token->length = 1; // Just the first "
+    token->length = 0; // Just the first "
     token->flags = flags;
     while(content[*pos] != '"' && content[*pos] != '\0') {
         EMBDC_MANAGE_CHUNK_ALLOC(token->length);
         TokenPushChar(token, pos, content, c);
     }
-    (*pos)++;
     token->value[token->length] = '\0';
     PushToken(dist, token);
+    PushTokenDirect(dist, c, content, pos);
 }
 
 static void EmbdcReadLineBreak(

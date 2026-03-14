@@ -30,9 +30,7 @@
   <component name="ChangeListManager">
     <list default="true" id="6fac708c-800c-41ce-98c1-1386bd20d4d3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/embedrite/lexan.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/embedrite/lexan.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/embedrite/lexan.h" beforeDir="false" afterPath="$PROJECT_DIR$/src/embedrite/lexan.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -146,7 +144,7 @@
       <workItem from="1773344637461" duration="6104000" />
       <workItem from="1773423230105" duration="7199000" />
       <workItem from="1773436597288" duration="4554000" />
-      <workItem from="1773491065654" duration="1758000" />
+      <workItem from="1773491065654" duration="2937000" />
     </task>
     <servers />
   </component>
@@ -180,14 +178,6 @@
     </option>
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
-          <url>file://$PROJECT_DIR$/src/embedrite/lexan.c</url>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="CMakeRunConfiguration">
         <watch expression="tokens.length" language="C++" />
