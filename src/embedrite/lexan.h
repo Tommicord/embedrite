@@ -16,8 +16,7 @@
 #define EMBEDRITE_BASE_10 0xA
 #define EMBEDRITE_BASE_16 0xB
 #define EMBEDRITE_BASE_2 0xC
-#define EMBEDRITE_ASSEMBLY_KW 0xE
-#define EMBEDRITE_MULTILINE 0xF
+#define EMBEDRITE_MULTILINE 0xE
 #define EMBEDRITE_NDT 0x18 // Not defined token
 
 typedef struct EmbdcTokens *TOKENS;
@@ -39,9 +38,8 @@ struct EmbdcTokens {
 static const char *embedrite_keywords[] = {
     "func", "compact", "struct", "ret",
     "int", "bit", "char", "byte", "exit",
-    "embed", "and", "not", "or",
-};
-static const char *embedrite_assembly_keywords[] = {
+    "embed", "and", "not", "or", "import",
+
     "mov", "push", "pop", "lea",
     "add", "sub", "inc", "dec",
     "imul", "idiv", "adc", "and", "not", "andl", "notl", "orl",
@@ -65,8 +63,7 @@ static const char *embedrite_tokens[] = {
     ";", "<", ">", ">=", "<="
 };
 
-static const int keywordsLength = 11;
-static const int assemblyKeywordsLength = 57;
+static const int keywordsLength = 72;
 static const int tokensLength = 26;
 
 #ifdef EMBDC_DEBUG
@@ -90,7 +87,9 @@ static const int tokensLength = 26;
         else { \
             string = token->value; \
         } \
-        printf("%d '%s'\n", arrI, string); \
+        printf("%d '%s' ", arrI, string); \
+        EMBDC_FLAGS_BINARY(token->flags); \
+        printf("\n");  \
         arrI++; \
     }
 #endif

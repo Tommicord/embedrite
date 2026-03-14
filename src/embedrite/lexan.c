@@ -62,9 +62,11 @@ static int IsDelimiter(const char c) {
             || c == 0x3B;
 }
 
-static int DefinedToken(const char *string, int length, const char *arr[]) {
-    for(int i = 0; i < length; ++i) {
-        if(strcmp(string, arr[i]) == 0) {
+static int IsKeyword(char *string) {
+    char *lowerstr = strlwr(string);
+
+    for (int i = 0; i < keywordsLength; ++i) {
+        if (strcmp(lowerstr, embedrite_keywords[i]) == 0) {
             return 1;
         }
     }
@@ -186,22 +188,13 @@ static void EmbdcReadWord(
         TokenPushChar(token, pos, content, c);
     }
     token->value[token->length] = '\0';
-    char *tokenCopy = malloc(token->length);
-    strncpy(tokenCopy, token->value, token->length);
-    for (int i = 0; i < token->length; ++i) {
-        tokenCopy[i] = (char)tolower(token->value[i]);
-    }
-    if (DefinedToken(tokenCopy, assemblyKeywordsLength, embedrite_assembly_keywords)) {
+    if (IsKeyword(token->value)) {
         FlagSet(&flags, EMBEDRITE_KEYWORD);
-        FlagSet(&flags, EMBEDRITE_ASSEMBLY_KW);
-        token->flags = flags;
     }
-    else if (DefinedToken(tokenCopy, keywordsLength, embedrite_keywords)) {
-        FlagSet(&flags, EMBEDRITE_KEYWORD);
-        token->flags = flags;
+    else {
+        FlagSet(&flags, EMBEDRITE_IDENTIFIER);
     }
-    free(tokenCopy);
-    tokenCopy = NULL;
+    token->flags = flags;
     PushToken(dist, token);
 }
 
@@ -237,7 +230,7 @@ static void EmbdcReadString(
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
     token->allocated = 128;
     token->value = malloc(token->allocated);
-    token->length = 0; // Just the first "
+    token->length = 0;
     token->flags = flags;
     while(content[*pos] != '"' && content[*pos] != '\0') {
         EMBDC_MANAGE_TOKEN_CHUNK_ALLOC(token->length);
@@ -305,6 +298,7 @@ static void EmbdcReadNumber(
             );
     }
     else {
+        FlagSet(&flags, EMBEDRITE_BASE_10);
         while (IsDigit(*c)) {
             TokenPushChar(token, pos, content, c);
         }
