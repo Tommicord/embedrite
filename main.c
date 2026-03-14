@@ -27,7 +27,7 @@ func int main:
 #include <stdlib.h>
 
 #define EMBDC_DEBUG
-#include "src/embedrite/lexa.c"
+#include "src/embedrite/lexan.h"
 
 char *Readf(const char *filename) {
     FILE *file = fopen(filename, "r");

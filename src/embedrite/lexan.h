@@ -1,6 +1,8 @@
 #ifndef EMBEDRITE_LEXA_H_
 #define EMBEDRITE_LEXA_H_
 
+#include <string.h>
+
 #define TOKENS_SIZE 1024
 #define TOKEN_SIZE 256
 
@@ -21,8 +23,8 @@
 #define EMBEDRITE_MULTILINE 0xF
 #define EMBEDRITE_NDT 0x18 // Not defined token
 
-typedef unsigned short FLAGS;
 typedef struct EmbdcTokens *TOKENS;
+typedef unsigned short FLAGS;
 
 struct EmbdcToken {
     char *value;
@@ -37,8 +39,8 @@ struct EmbdcTokens {
 };
 
 static const char *embedrite_keywords[] = {
-    "func", "compact", "struct",
-    "int", "bit", "char", "byte",
+    "func", "compact", "struct", "ret",
+    "int", "bit", "char", "byte", "exit",
     "embed", "and", "not", "or",
 };
 static const char *embedrite_assembly_keywords[] = {
@@ -95,7 +97,7 @@ static const int tokensLength = 26;
     }
 #endif
 
-static TOKENS EmbdcGetTokens(const char *content);
-static void EmbdcFreeTokens(TOKENS tokens);
+TOKENS EmbdcGetTokens(const char *content);
+void EmbdcFreeTokens(TOKENS tokens);
 
 #endif

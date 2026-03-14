@@ -5,5 +5,5 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(embdc
         main.c
-        src/embedrite/lexa.c
-        src/embedrite/lexa.h)
+        src/embedrite/lexan.c
+        src/embedrite/lexan.h)

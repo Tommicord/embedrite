@@ -30,7 +30,10 @@
   <component name="ChangeListManager">
     <list default="true" id="6fac708c-800c-41ce-98c1-1386bd20d4d3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/embedrite/lexa.c" beforeDir="false" afterPath="$PROJECT_DIR$/src/embedrite/lexa.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.c" beforeDir="false" afterPath="$PROJECT_DIR$/main.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/embedrite/lexa.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/embedrite/lexa.h" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -102,6 +105,11 @@
     </key>
   </component>
   <component name="RunManager" selected="CMake Application.embdc">
+    <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="embdc" type="CMakeRunConfiguration" factoryName="Application" PROGRAM_PARAMS="file.embdr" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Embedrite" TARGET_NAME="embdc" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="Embedrite" RUN_TARGET_NAME="embdc">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
@@ -138,7 +146,8 @@
       <workItem from="1773260300456" duration="4273000" />
       <workItem from="1773344637461" duration="6104000" />
       <workItem from="1773423230105" duration="7199000" />
-      <workItem from="1773436597288" duration="545000" />
+      <workItem from="1773436597288" duration="4554000" />
+      <workItem from="1773491065654" duration="171000" />
     </task>
     <servers />
   </component>
@@ -172,6 +181,14 @@
     </option>
   </component>
   <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="com.jetbrains.cidr.execution.debugger.OCBreakpointType">
+          <url>file://$PROJECT_DIR$/src/embedrite/lexan.c</url>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
     <watches-manager>
       <configuration name="CMakeRunConfiguration">
         <watch expression="tokens.length" language="C++" />
