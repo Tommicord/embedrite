@@ -6,16 +6,18 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define EMBDC_MANAGE_CHUNK_ALLOC(tokenCharPos) \
-    if (tokenCharPos + 1 >= token->allocated) { \
-        token->allocated = tokenCharPos + 128; \
-        char *chunk = realloc(token->value, token->allocated); \
+#define TOKENS_SIZE 1024
+#define TOKEN_SIZE 256
+#define EMBDC_MANAGE_TOKEN_CHUNK_ALLOC(length) \
+    if (length + 1 >= token->allocated) { \
+        token->allocated = length + 128; \
+        void *chunk = realloc(token->value, token->allocated); \
         if(chunk == NULL) { \
             free(token->value); \
             perror("Failed allocating memory from token"); \
             abort(); \
         } \
-    token->value = chunk; \
+       token->value = chunk; \
     }
 
 static void FlagSet(FLAGS *flags, const uint8_t flag) {
@@ -81,6 +83,16 @@ static void TokenPushChar(struct EmbdcToken *token, int *pos, const char *conten
 }
 
 static void PushToken(TOKENS tokens, struct EmbdcToken *token) {
+    if (tokens->length + 1 >= tokens->allocated) {
+        tokens->allocated = tokens->length + 1024;
+        void *chunk = realloc(tokens->arr, tokens->allocated);
+        if (chunk == NULL) {
+            free(tokens);
+            perror("Failed allocation for tokens");
+            abort();
+        }
+        tokens->arr = chunk;
+    }
     tokens->arr[tokens->length] = token;
     tokens->length++;
 }
@@ -95,10 +107,15 @@ static struct EmbdcToken *TokenDirect(const char *value, FLAGS flags) {
     return token;
 }
 
-static void PushTokenDirect(TOKENS dist, char *c, const char *content, int *pos) {
+static void PushCharAsToken(TOKENS dist, char *c, const char *content, int *pos) {
+    char *token = calloc(2, sizeof(char)); // The char and the NUL
     *c = content[*pos];
-    PushToken(dist, TokenDirect(c, EMBEDRITE_TOKEN));
+    token[0] = *c;
+    token[1] = '\0';
+    PushToken(dist, TokenDirect(token, EMBEDRITE_TOKEN));
     (*pos)++;
+    free(token);
+    token = NULL;
     *c = content[*pos];
 }
 
@@ -119,7 +136,7 @@ static void TokenManageBase(
     *pos += jumpBits, token->length += jumpBits;
     *c = content[*pos];
     while (checker(*c)) {
-        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        EMBDC_MANAGE_TOKEN_CHUNK_ALLOC(token->length);
         TokenPushChar(token, pos, content, c);
     }
     token->value[token->length] = '\0';
@@ -165,7 +182,7 @@ static void EmbdcReadWord(
     token->value = malloc(token->allocated);
     token->length = 0;
     while(IsLetter(*c)) {
-        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        EMBDC_MANAGE_TOKEN_CHUNK_ALLOC(token->length);
         TokenPushChar(token, pos, content, c);
     }
     token->value[token->length] = '\0';
@@ -202,7 +219,7 @@ static void EmbdcReadSpace(
     FlagSet(&flags, EMBEDRITE_WHITE_SPACE);
     token->flags = flags;
     while (content[*pos] == ' ') {
-        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        EMBDC_MANAGE_TOKEN_CHUNK_ALLOC(token->length);
         TokenPushChar(token, pos, content, c);
     }
     token->value[token->length] = '\0';
@@ -215,7 +232,7 @@ static void EmbdcReadString(
     const char *content,
     TOKENS dist,
     FLAGS flags) {
-    PushTokenDirect(dist, c, content, pos);
+    PushCharAsToken(dist, c, content, pos);
     FlagSet(&flags, EMBEDRITE_STRING);
     struct EmbdcToken *token = malloc(sizeof(struct EmbdcToken));
     token->allocated = 128;
@@ -223,12 +240,12 @@ static void EmbdcReadString(
     token->length = 0; // Just the first "
     token->flags = flags;
     while(content[*pos] != '"' && content[*pos] != '\0') {
-        EMBDC_MANAGE_CHUNK_ALLOC(token->length);
+        EMBDC_MANAGE_TOKEN_CHUNK_ALLOC(token->length);
         TokenPushChar(token, pos, content, c);
     }
     token->value[token->length] = '\0';
     PushToken(dist, token);
-    PushTokenDirect(dist, c, content, pos);
+    PushCharAsToken(dist, c, content, pos);
 }
 
 static void EmbdcReadLineBreak(
@@ -302,7 +319,7 @@ static void EmbdcReadDelmt(
     TOKENS dist,
     FLAGS flags
     ) {
-    char *delmt = malloc(2); // The delimiter is only 2 bytes
+    char *delmt = calloc(2, sizeof(char)); // The delimiter is only 2 bytes
     delmt[0] = *c;
     delmt[1] = '\0';
     FlagSet(&flags, EMBEDRITE_DELIMITER);

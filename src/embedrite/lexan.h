@@ -3,9 +3,6 @@
 
 #include <string.h>
 
-#define TOKENS_SIZE 1024
-#define TOKEN_SIZE 256
-
 #define EMBEDRITE_OPERATOR 0x00
 #define EMBEDRITE_KEYWORD 0x01
 #define EMBEDRITE_STRING 0x02
@@ -35,6 +32,7 @@ struct EmbdcToken {
 
 struct EmbdcTokens {
     int length;
+    int allocated;
     struct EmbdcToken **arr;
 };
 
